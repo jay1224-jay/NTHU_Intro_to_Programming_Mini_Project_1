@@ -26,6 +26,10 @@ TokenSet getToken(void)
         ungetc(c, stdin);
         lexeme[i] = '\0';
         return INT;
+    } else if ( c == '&' ) {
+        lexeme[0] = c;
+        lexeme[1] = '\0';
+        return AND;
     } else if (c == '+' || c == '-') {
         lexeme[0] = c;
         lexeme[1] = '\0';
@@ -48,7 +52,17 @@ TokenSet getToken(void)
         return RPAREN;
     } else if (isalpha(c)) {
         lexeme[0] = c;
-        lexeme[1] = '\0';
+        // long variable name
+        // accept char, int, underscore
+        c = fgetc(stdin);
+        i = 1;
+        while ( (isalpha(c) || isdigit(c) || c == '_' ) && i < MAXLEN) {
+            lexeme[i] = c;
+            ++i;
+            c = fgetc(stdin);
+        }
+        ungetc(c, stdin);
+        lexeme[i] = '\0';
         return ID;
     } else if (c == EOF) {
         return ENDFILE;

@@ -8,6 +8,16 @@
 | parser  | 0%       |
 | codeGen | 0%       |
 
+## Lex
+|         | Progress |
+|---------|----------|
+| New grammar     | 20%       |
+| long var name  | 100%       |
+
+## Parser
+
+## Code Generation
+
 1. [Mini_Project_1_Spec.pptx](Mini_Project_1_Spec.pptx) is the specification of Mini Project 1.
 
 2. `calculator_loop/` and `calculator_recursion/` are the provided packages. Please refer to [the package introduction](Project_1_Compiler&Calculator.pptx) for details.
