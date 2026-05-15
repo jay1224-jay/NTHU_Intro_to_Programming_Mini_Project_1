@@ -74,7 +74,8 @@ void freeTree(BTNode *root) {
 //		   	 ID  | ADDSUB ID  | 
 //		   	 ID ASSIGN expr |
 //		   	 LPAREN expr RPAREN |
-//		   	 ADDSUB LPAREN expr RPAREN
+//		   	 ADDSUB LPAREN expr RPAREN |
+//           INCDEC ID
 BTNode *factor(void) {
     BTNode *retp = NULL, *left = NULL;
 
@@ -112,7 +113,18 @@ BTNode *factor(void) {
         } else {
             error(NOTNUMID);
         }
-    } else if (match(LPAREN)) {
+    } else if (match(INCDEC)) {
+        retp = makeNode(INCDEC, getLexeme());
+        retp->left = makeNode(INT, "0");
+        advance();
+        if (match(ID)) {
+            retp->right = makeNode(ID, getLexeme());
+            advance();
+        } else {
+            error(NOTNUMID);
+        }
+    } 
+    else if (match(LPAREN)) {
         advance();
         retp = expr();
         if (match(RPAREN))
@@ -167,6 +179,22 @@ BTNode *expr_tail(BTNode *left) {
     }
 }
 
+// assign_expr = ID ASSIGN assign_expr | ID ADDSUB_ASSIGN assign_expr | or_expr
+BTNode *assign_expr(void) {
+    BTNode *retp = NULL, *left = NULL;
+    if ( match(ID) ) {
+        left = makeNode(ID, getLexeme());
+        advance();
+        if ( match(ASSIGN) ) {
+            ;
+        } else if ( match(ADDSUB_ASSIGN) ) {
+            ;
+        }
+    }
+
+}
+
+
 // statement := ENDFILE | END | expr END
 void statement(void) {
     BTNode *retp = NULL;
@@ -177,7 +205,7 @@ void statement(void) {
         printf(">> ");
         advance();
     } else {
-        retp = expr();
+        retp = assign_expr();
         if (match(END)) {
             printf("%d\n", evaluateTree(retp));
             printf("Prefix traversal: ");

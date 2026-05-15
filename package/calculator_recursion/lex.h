@@ -8,8 +8,8 @@ typedef enum {
     UNKNOWN, END, ENDFILE, 
     INT, ID,
     ADDSUB, MULDIV,
-    INCDEC,
-    AND, OR, XOR,
+    INCDEC, // ++, --
+    AND, OR, XOR, // &|^
     ADDSUB_ASSIGN, // +=, -=
     ASSIGN, 
     LPAREN, RPAREN
