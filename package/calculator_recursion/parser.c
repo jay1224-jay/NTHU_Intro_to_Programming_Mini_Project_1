@@ -288,8 +288,8 @@ int statement(void) {
         retp = assign_expr();
         if (match(END)) {
             // Check syntax
-            if (DEBUG)
-                printf("%d\n", evaluateTree(retp));
+            
+            printf("%d\n", evaluateTree(retp));
             
             // printf(" === Assembly code ===\n");
             genCode(retp);

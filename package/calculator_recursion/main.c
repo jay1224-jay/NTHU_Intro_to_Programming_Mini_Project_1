@@ -50,8 +50,6 @@ or_expr
 */
 
 int main() {
-    if (!DEBUG)
-        freopen("input.txt", "w", stdout);
     initTable();
     // printf(">> ");
     while (statement() != 1) {

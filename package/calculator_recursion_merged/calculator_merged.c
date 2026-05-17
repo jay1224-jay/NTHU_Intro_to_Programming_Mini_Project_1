@@ -34,7 +34,7 @@ extern char *getLexeme(void);
 
 // Set PRINTERR to 1 to print error message while calling error()
 // Make sure you set PRINTERR to 0 before you submit your code
-#define PRINTERR 1
+#define PRINTERR 0
 
 #define DEBUG 0
 
@@ -113,6 +113,7 @@ extern void err(ErrorType errorNum);
 // for codeGen
 // Evaluate the syntax tree
 extern int evaluateTree(BTNode *root);
+
 
 // Generate Assembly code
 extern int genCode(BTNode* root);
@@ -232,7 +233,7 @@ char *getLexeme(void) {
 parser implementation
 ============================================================================================*/
 
-int sbcount = 0;
+int sbcount = 0, mem_count = 0;
 Symbol table[TBLSIZE];
 
 void initTable(void) {
@@ -243,6 +244,7 @@ void initTable(void) {
     strcpy(table[2].name, "z");
     table[2].address = 8;
     sbcount = 3;
+    mem_count = 3;
 }
 
 int getval(char *str) {
@@ -262,7 +264,7 @@ int getval(char *str) {
 
 int getaddress(char* str) {
     int i = 0;
-    for (i = 0; i < sbcount; i++) {
+    for (i = 0; i < mem_count; i++) {
         if (strcmp(str, table[i].name) == 0) {
             return table[i].address;
         }
@@ -274,18 +276,18 @@ int getaddress(char* str) {
 int setaddress(char *str) {
     int i = 0;
 
-    for (i = 0; i < sbcount; i++) {
+    for (i = 0; i < mem_count; i++) {
         if (strcmp(str, table[i].name) == 0) {
             return table[i].address;
         }
     }
 
-    if (sbcount >= TBLSIZE)
+    if (mem_count >= TBLSIZE)
         error(RUNOUT);
     
-    strcpy(table[sbcount].name, str);
-    table[sbcount].address = (sbcount) * 4;
-    return table[sbcount++].address;
+    strcpy(table[mem_count].name, str);
+    table[mem_count].address = (mem_count) * 4;
+    return table[mem_count++].address;
 }
 
 int setval(char *str, int val) {
@@ -300,7 +302,8 @@ int setval(char *str, int val) {
 
     if (sbcount >= TBLSIZE)
         error(RUNOUT);
-    
+
+
     strcpy(table[sbcount].name, str);
     table[sbcount].val = val;
     sbcount++;
@@ -332,7 +335,7 @@ BTNode *assign_expr(void) {
     BTNode *left = or_expr(), *retp;
     
     if ( match(ASSIGN) ) {
-        if (!left->is_lvalue) {
+        if (!left->is_lvalue || left->data != ID) {
             error(NOTLVAL);
         }
         retp = makeNode(ASSIGN, getLexeme());
@@ -340,7 +343,7 @@ BTNode *assign_expr(void) {
         retp->left = left; // ID
         retp->right = assign_expr(); // assign_expr
     } else if ( match(ADDSUB_ASSIGN) ) {
-        if(!left->is_lvalue) {
+        if(!left->is_lvalue  || left->data != ID) {
             error(NOTLVAL);
         }
         retp = makeNode(ADDSUB_ASSIGN, getLexeme());
@@ -457,7 +460,7 @@ BTNode *unary_expr(void) {
     if (match(ADDSUB)) {
         node = makeNode(ADDSUB, getLexeme());
         advance();
-        node->left = 0;
+        node->left = makeNode(INT, "0");
         node->right = unary_expr();
     } else {
         return factor();
@@ -518,6 +521,8 @@ int statement(void) {
             // Check syntax
             if (DEBUG)
                 printf("%d\n", evaluateTree(retp));
+            else
+                evaluateTree(retp);
             
             // printf(" === Assembly code ===\n");
             genCode(retp);
@@ -567,6 +572,7 @@ void err(ErrorType errorNum) {
                 break;
         }
     }
+    printf("EXIT 1\n");
     exit(0);
 }
 
@@ -680,7 +686,10 @@ int genCode(BTNode *root) {
                 mov_rm(retaddr, l_mem);
                 r0 = alloc_reg();
                 mov_rc(r0, 1);
-                printf("ADD r%d r%d\n", retaddr, r0);
+                if ( strcmp(root->lexeme, "++") == 0 )
+                    printf("ADD r%d r%d\n", retaddr, r0);
+                else
+                    printf("SUB r%d r%d\n", retaddr, r0);
                 free_reg(r0);
                 mov_mr(l_mem, retaddr);
                 break;
@@ -729,15 +738,6 @@ int genCode(BTNode *root) {
     return retaddr;
 }
 
-
-
-
-
-
-
-
-
-
 int evaluateTree(BTNode *root) {
     int retval = 0, lv = 0, rv = 0;
 
@@ -780,16 +780,8 @@ int evaluateTree(BTNode *root) {
                 } else if (strcmp(root->lexeme, "*") == 0) {
                     retval = lv * rv;
                 } else if (strcmp(root->lexeme, "/") == 0) {
-                    /*
-                    
-2. At least one variable in the right-hand side:
 
-                x = 0
-                y = 5 / x
-
-This is a valid expression.
                     
-                    */
                     if (rv == 0) {
                         if ( has_ID ) {
                             retval = -1;
