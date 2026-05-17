@@ -4,19 +4,29 @@
 
 |         | Progress |
 |---------|----------|
-| lex     | 0%       |
+| lex     | 100%       |
 | parser  | 0%       |
 | codeGen | 0%       |
 
 ## Lex
 |         | Progress |
 |---------|----------|
-| New grammar     | 20%       |
+| New grammar     | 100%       |
 | long var name  | 100%       |
 
 ## Parser
+|         | Progress |
+|---------|----------|
+| Grammar     | 100%       |
+| Undefined Variable     | 0%       |
+| Div by 0 handling     | 0%       |
 
 ## Code Generation
+|         | Progress |
+|---------|----------|
+| Assembly code     | 0%       |
+| Store final value in register| 0%|
+| Optimization | 0% | 
 
 1. [Mini_Project_1_Spec.pptx](Mini_Project_1_Spec.pptx) is the specification of Mini Project 1.
 
