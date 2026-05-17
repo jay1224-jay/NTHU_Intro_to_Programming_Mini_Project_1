@@ -9,30 +9,34 @@
 
 // Token types
 typedef enum {
-    UNKNOWN, END, ENDFILE,
+    UNKNOWN, END, ENDFILE, 
     INT, ID,
     ADDSUB, MULDIV,
-    ASSIGN,
+    INCDEC, // ++, --
+    AND, OR, XOR, // &|^
+    ADDSUB_ASSIGN, // +=, -=
+    ASSIGN, 
     LPAREN, RPAREN
 } TokenSet;
 
-TokenSet getToken(void);
-TokenSet curToken = UNKNOWN;
-char lexeme[MAXLEN];
+// Test if a token matches the current token 
+extern int match(TokenSet token);
 
-// Test if a token matches the current token
-int match(TokenSet token);
 // Get the next token
-void advance(void);
-// Get the lexeme of the current token
-char *getLexeme(void);
+extern void advance(void);
 
+// Get the lexeme of the current token
+extern char *getLexeme(void);
 
 // for parser
-#define TBLSIZE 64
+
+#define TBLSIZE 256
+
 // Set PRINTERR to 1 to print error message while calling error()
 // Make sure you set PRINTERR to 0 before you submit your code
 #define PRINTERR 1
+
+#define DEBUG 0
 
 // Call this macro to print error message and exit the program
 // This will also print where you called it in your program
@@ -44,57 +48,86 @@ char *getLexeme(void);
 
 // Error types
 typedef enum {
-    UNDEFINED, MISPAREN, NOTNUMID, NOTFOUND, RUNOUT, NOTLVAL, DIVZERO, SYNTAXERR
+    UNDEFINED, MISPAREN, NOTNUMID, NOTFOUND, RUNOUT, NOTLVAL, 
+    DIVZERO, SYNTAXERR, NOTASSIGN
 } ErrorType;
 
 // Structure of the symbol table
 typedef struct {
     int val;
     char name[MAXLEN];
+    int address; // memory address
 } Symbol;
 
 // Structure of a tree node
 typedef struct _Node {
     TokenSet data;
     int val;
+    int is_lvalue;
     char lexeme[MAXLEN];
-    struct _Node *left;
+    struct _Node *left; 
     struct _Node *right;
 } BTNode;
 
-int sbcount = 0;
-Symbol table[TBLSIZE];
+// The symbol table
+extern Symbol table[TBLSIZE];
 
 // Initialize the symbol table with builtin variables
-void initTable(void);
+extern void initTable(void);
+
 // Get the value of a variable
-int getval(char *str);
+extern int getval(char *str);
+extern int getaddress(char* str);
+
 // Set the value of a variable
-int setval(char *str, int val);
+extern int setval(char *str, int val);
+extern int setaddress(char* str);
+
 // Make a new node according to token type and lexeme
-BTNode *makeNode(TokenSet tok, const char *lexe);
+extern BTNode *makeNode(TokenSet tok, const char *lexe);
+
 // Free the syntax tree
-void freeTree(BTNode *root);
-BTNode *factor(void);
-BTNode *term(void);
-BTNode *term_tail(BTNode *left);
-BTNode *expr(void);
-BTNode *expr_tail(BTNode *left);
-void statement(void);
+extern void freeTree(BTNode *root);
+
+extern BTNode *factor(void);
+extern BTNode *unary_expr(void);
+extern BTNode *muldiv_expr_tail(BTNode *left);
+extern BTNode *muldiv_expr(void);
+extern BTNode *addsub_expr_tail(BTNode *left);
+extern BTNode *muldiv_expr(void);
+extern BTNode *addsub_expr_tail(BTNode *left);
+extern BTNode *addsub_expr(void);
+extern BTNode *and_expr_tail(BTNode *left);
+extern BTNode *and_expr(void);
+extern BTNode *xor_expr_tail(BTNode *left);
+extern BTNode *xor_expr(void);
+extern BTNode *or_expr_tail(BTNode *left);
+extern BTNode *or_expr(void);
+extern BTNode *assign_expr(void);
+extern int statement(void);
+
 // Print error message and exit the program
-void err(ErrorType errorNum);
+extern void err(ErrorType errorNum);
 
 
 // for codeGen
 // Evaluate the syntax tree
-int evaluateTree(BTNode *root);
+extern int evaluateTree(BTNode *root);
+
+// Generate Assembly code
+extern int genCode(BTNode* root);
+
 // Print the syntax tree in prefix
-void printPrefix(BTNode *root);
+extern void printPrefix(BTNode *root);
 
 
 /*============================================================================================
 lex implementation
 ============================================================================================*/
+
+static TokenSet getToken(void);
+static TokenSet curToken = UNKNOWN;
+static char lexeme[MAXLEN];
 
 TokenSet getToken(void)
 {
@@ -115,8 +148,32 @@ TokenSet getToken(void)
         ungetc(c, stdin);
         lexeme[i] = '\0';
         return INT;
+    } else if ( c == '&' ) {
+        lexeme[0] = c;
+        lexeme[1] = '\0';
+        return AND;
+    } else if ( c == '|' ) {
+        lexeme[0] = c;
+        lexeme[1] = '\0';
+        return OR;
+    } else if ( c == '^' ) {
+        lexeme[0] = c;
+        lexeme[1] = '\0';
+        return XOR;
     } else if (c == '+' || c == '-') {
         lexeme[0] = c;
+        c = fgetc(stdin);
+        if (c == lexeme[0]) {
+            // ++ or --
+            lexeme[1] = c;
+            lexeme[2] = '\0';
+            return INCDEC;
+        } else if ( c == '=' ) {
+            lexeme[1] = c;
+            lexeme[2] = '\0';
+            return ADDSUB_ASSIGN;
+        }
+        ungetc(c, stdin);
         lexeme[1] = '\0';
         return ADDSUB;
     } else if (c == '*' || c == '/') {
@@ -137,7 +194,17 @@ TokenSet getToken(void)
         return RPAREN;
     } else if (isalpha(c)) {
         lexeme[0] = c;
-        lexeme[1] = '\0';
+        // long variable name
+        // accept char, int, underscore
+        c = fgetc(stdin);
+        i = 1;
+        while ( (isalpha(c) || isdigit(c) || c == '_' ) && i < MAXLEN) {
+            lexeme[i] = c;
+            ++i;
+            c = fgetc(stdin);
+        }
+        ungetc(c, stdin);
+        lexeme[i] = '\0';
         return ID;
     } else if (c == EOF) {
         return ENDFILE;
@@ -165,13 +232,16 @@ char *getLexeme(void) {
 parser implementation
 ============================================================================================*/
 
+int sbcount = 0;
+Symbol table[TBLSIZE];
+
 void initTable(void) {
     strcpy(table[0].name, "x");
-    table[0].val = 0;
+    table[0].address = 0;
     strcpy(table[1].name, "y");
-    table[1].val = 0;
+    table[1].address = 4;
     strcpy(table[2].name, "z");
-    table[2].val = 0;
+    table[2].address = 8;
     sbcount = 3;
 }
 
@@ -184,11 +254,38 @@ int getval(char *str) {
 
     if (sbcount >= TBLSIZE)
         error(RUNOUT);
-
-    strcpy(table[sbcount].name, str);
-    table[sbcount].val = 0;
-    sbcount++;
+    
+    // Undefined variable
+    error(NOTFOUND);
     return 0;
+}
+
+int getaddress(char* str) {
+    int i = 0;
+    for (i = 0; i < sbcount; i++) {
+        if (strcmp(str, table[i].name) == 0) {
+            return table[i].address;
+        }
+    }
+    // error(NOTFOUND);
+    return -1;
+}
+
+int setaddress(char *str) {
+    int i = 0;
+
+    for (i = 0; i < sbcount; i++) {
+        if (strcmp(str, table[i].name) == 0) {
+            return table[i].address;
+        }
+    }
+
+    if (sbcount >= TBLSIZE)
+        error(RUNOUT);
+    
+    strcpy(table[sbcount].name, str);
+    table[sbcount].address = (sbcount) * 4;
+    return table[sbcount++].address;
 }
 
 int setval(char *str, int val) {
@@ -203,7 +300,7 @@ int setval(char *str, int val) {
 
     if (sbcount >= TBLSIZE)
         error(RUNOUT);
-
+    
     strcpy(table[sbcount].name, str);
     table[sbcount].val = val;
     sbcount++;
@@ -228,11 +325,146 @@ void freeTree(BTNode *root) {
     }
 }
 
-// factor := INT | ADDSUB INT |
-//		   	 ID  | ADDSUB ID  |
-//		   	 ID ASSIGN expr |
-//		   	 LPAREN expr RPAREN |
-//		   	 ADDSUB LPAREN expr RPAREN
+
+
+// assign_expr := ID ASSIGN assign_expr | ID ADDSUB_ASSIGN assign_expr | or_expr
+BTNode *assign_expr(void) {
+    BTNode *left = or_expr(), *retp;
+    
+    if ( match(ASSIGN) ) {
+        if (!left->is_lvalue) {
+            error(NOTLVAL);
+        }
+        retp = makeNode(ASSIGN, getLexeme());
+        advance();
+        retp->left = left; // ID
+        retp->right = assign_expr(); // assign_expr
+    } else if ( match(ADDSUB_ASSIGN) ) {
+        if(!left->is_lvalue) {
+            error(NOTLVAL);
+        }
+        retp = makeNode(ADDSUB_ASSIGN, getLexeme());
+        advance();
+        retp->left = left; // ID
+        retp->right = assign_expr(); // assign_expr
+    } else {
+        retp = left;
+    }
+
+    return retp;
+    
+}
+// or_expr := xor_expr or_expr_tail
+BTNode *or_expr(void) {
+    BTNode *node = xor_expr();
+    return or_expr_tail(node);
+}
+
+// or_expr_tail := OR xor_expr or_expr_tail | NiL
+BTNode *or_expr_tail(BTNode *left) {
+    BTNode *node = NULL;
+
+    if (match(OR)) {
+        node = makeNode(OR, getLexeme());
+        advance();
+        node->left = left;
+        node->right = xor_expr();
+        return or_expr_tail(node);
+    } else {
+        return left;
+    }
+}
+// xor_expr := and_expr xor_expr_tail
+BTNode *xor_expr(void) {
+    BTNode *node = and_expr();
+    return xor_expr_tail(node);
+}
+// xor_expr_tail := XOR and_expr xor_expr_tail | NiL
+BTNode *xor_expr_tail(BTNode *left) {
+    BTNode *node = NULL;
+
+    if (match(XOR)) {
+        node = makeNode(XOR, getLexeme());
+        advance();
+        node->left = left;
+        node->right = and_expr();
+        return xor_expr_tail(node);
+    } else {
+        return left;
+    }
+}
+// and_expr := addsub_expr and_expr_tail
+BTNode *and_expr(void) {
+    BTNode *node = addsub_expr();
+    return and_expr_tail(node);
+}
+// and_expr_tail := AND addsub_expr and_expr_tail | NiL
+BTNode *and_expr_tail(BTNode *left) {
+    BTNode *node = NULL;
+
+    if (match(AND)) {
+        node = makeNode(AND, getLexeme());
+        advance();
+        node->left = left;
+        node->right = addsub_expr();
+        return and_expr_tail(node);
+    } else {
+        return left;
+    }
+}
+// addsub_expr := muldiv_expr addsub_expr_tail
+BTNode *addsub_expr(void) {
+    BTNode *node = muldiv_expr();
+    return addsub_expr_tail(node);
+}
+// addsub_expr_tail := ADDSUB muldiv_expr addsub_expr_tail | NiL
+BTNode *addsub_expr_tail(BTNode *left) {
+    BTNode *node = NULL;
+
+    if (match(ADDSUB)) {
+        node = makeNode(ADDSUB, getLexeme());
+        advance();
+        node->left = left;
+        node->right = muldiv_expr();
+        return addsub_expr_tail(node);
+    } else {
+        return left;
+    }
+}
+// muldiv_expr := unary_expr muldiv_expr_tail
+BTNode *muldiv_expr(void) {
+    BTNode *node = unary_expr();
+    return muldiv_expr_tail(node);
+}
+// muldiv_expr_tail := MULDIV unary_expr muldiv_expr_tail | NiL
+BTNode *muldiv_expr_tail(BTNode *left) {
+    BTNode *node = NULL;
+
+    if (match(MULDIV)) {
+        node = makeNode(MULDIV, getLexeme());
+        advance();
+        node->left = left;
+        node->right = unary_expr();
+        return muldiv_expr_tail(node);
+    } else {
+        return left;
+    }
+}
+// unary_expr := ADDSUB unary_expr | factor
+BTNode *unary_expr(void) {
+    BTNode* node = NULL;
+
+    if (match(ADDSUB)) {
+        node = makeNode(ADDSUB, getLexeme());
+        advance();
+        node->left = 0;
+        node->right = unary_expr();
+    } else {
+        return factor();
+    }
+    return node;
+}
+// factor := INT | ID | INCDEC ID | LPAREN assign_expr RPAREN
 BTNode *factor(void) {
     BTNode *retp = NULL, *left = NULL;
 
@@ -242,37 +474,23 @@ BTNode *factor(void) {
     } else if (match(ID)) {
         left = makeNode(ID, getLexeme());
         advance();
-        if (!match(ASSIGN)) {
-            retp = left;
-        } else {
-            retp = makeNode(ASSIGN, getLexeme());
-            advance();
-            retp->left = left;
-            retp->right = expr();
-        }
-    } else if (match(ADDSUB)) {
-        retp = makeNode(ADDSUB, getLexeme());
+        left->is_lvalue = 1;
+        retp = left;
+    } else if (match(INCDEC)) {
+        retp = makeNode(INCDEC, getLexeme());
         retp->left = makeNode(INT, "0");
         advance();
-        if (match(INT)) {
-            retp->right = makeNode(INT, getLexeme());
-            advance();
-        } else if (match(ID)) {
+        if (match(ID)) {
             retp->right = makeNode(ID, getLexeme());
             advance();
-        } else if (match(LPAREN)) {
-            advance();
-            retp->right = expr();
-            if (match(RPAREN))
-                advance();
-            else
-                error(MISPAREN);
         } else {
             error(NOTNUMID);
         }
-    } else if (match(LPAREN)) {
+    } 
+    else if (match(LPAREN)) {
         advance();
-        retp = expr();
+        retp = assign_expr();
+        retp->is_lvalue = 0;
         if (match(RPAREN))
             advance();
         else
@@ -283,66 +501,32 @@ BTNode *factor(void) {
     return retp;
 }
 
-// term := factor term_tail
-BTNode *term(void) {
-    BTNode *node = factor();
-    return term_tail(node);
-}
-
-// term_tail := MULDIV factor term_tail | NiL
-BTNode *term_tail(BTNode *left) {
-    BTNode *node = NULL;
-
-    if (match(MULDIV)) {
-        node = makeNode(MULDIV, getLexeme());
-        advance();
-        node->left = left;
-        node->right = factor();
-        return term_tail(node);
-    } else {
-        return left;
-    }
-}
-
-// expr := term expr_tail
-BTNode *expr(void) {
-    BTNode *node = term();
-    return expr_tail(node);
-}
-
-// expr_tail := ADDSUB term expr_tail | NiL
-BTNode *expr_tail(BTNode *left) {
-    BTNode *node = NULL;
-
-    if (match(ADDSUB)) {
-        node = makeNode(ADDSUB, getLexeme());
-        advance();
-        node->left = left;
-        node->right = term();
-        return expr_tail(node);
-    } else {
-        return left;
-    }
-}
 
 // statement := ENDFILE | END | expr END
-void statement(void) {
+int statement(void) {
+    // puts("in");
     BTNode *retp = NULL;
 
     if (match(ENDFILE)) {
-        exit(0);
+        return 1;
     } else if (match(END)) {
-        printf(">> ");
+        // printf(">> ");
         advance();
     } else {
-        retp = expr();
+        retp = assign_expr();
         if (match(END)) {
-            printf("%d\n", evaluateTree(retp));
-            printf("Prefix traversal: ");
-            printPrefix(retp);
-            printf("\n");
+            // Check syntax
+            if (DEBUG)
+                printf("%d\n", evaluateTree(retp));
+            
+            // printf(" === Assembly code ===\n");
+            genCode(retp);
+            // printf(" === Assembly code ===\n");
+            // printf("Prefix traversal: ");
+            // printPrefix(retp);
+            // printf("\n");
             freeTree(retp);
-            printf(">> ");
+            // printf(">> ");
             advance();
         } else {
             error(SYNTAXERR);
@@ -375,6 +559,9 @@ void err(ErrorType errorNum) {
             case SYNTAXERR:
                 fprintf(stderr, "syntax error\n");
                 break;
+            case NOTASSIGN:
+                fprintf(stderr, " \"=\" expected\n");
+                break;
             default:
                 fprintf(stderr, "undefined error\n");
                 break;
@@ -384,9 +571,172 @@ void err(ErrorType errorNum) {
 }
 
 
+
 /*============================================================================================
 codeGen implementation
 ============================================================================================*/
+
+int has_ID;
+
+#define REG_NUMBER 8
+
+int reg_used[REG_NUMBER]; // 8 register
+int mem_idx = 0;
+int variable_reg[256]; // address of variable in regiser
+
+int alloc_reg(void) {
+    for ( int i = 0 ; i < REG_NUMBER ; ++i ) {
+        if ( !reg_used[i] ) {
+            reg_used[i] = 1;
+            return i;
+        }
+    }
+    puts("\n\n\nRunning out of registers\n\n\n");
+    return -1;
+}
+
+void free_reg(int r) {
+    reg_used[r] = 0;
+}
+
+/*
+
+Rule for genCode:
+
+1. r0
+r0
+
+2. r1 = r0
+MOV r1 r0
+return r1;
+
+3. r1 OP r0
+OP r1 r0
+return r1;
+
+*/
+
+void mov_rm(int r, int m) {
+    printf("MOV r%d [%d]\n", r, m);
+}
+
+void mov_mr(int m, int r) {
+    printf("MOV [%d] r%d\n", m, r);
+}
+
+void mov_rc(int r, int c) {
+    printf("MOV r%d %d\n", r, c);
+}
+
+void mov_rr(int r, int R) {
+    printf("MOV r%d r%d\n", r, R);
+}
+
+int genCode(BTNode *root) {
+    int retaddr = 0, r0 = 0, r1 = 0;
+    int l_mem;
+    char* op = NULL;
+    if (root != NULL) {
+        switch (root->data) {
+            case ID:
+                retaddr = alloc_reg();
+                mov_rm(retaddr, getaddress(root->lexeme));
+                break;
+            case INT:
+                retaddr = alloc_reg();
+                mov_rc(retaddr, atoi(root->lexeme));
+                break;
+            case ASSIGN:
+                l_mem = getaddress(root->left->lexeme);
+                if ( l_mem == -1 ) {
+                    // not found
+                    l_mem = setaddress(root->left->lexeme);
+                }
+                r1 = genCode(root->right);
+                mov_mr(l_mem, r1);
+                free_reg(r1);
+                break;
+            case ADDSUB_ASSIGN:
+                l_mem = getaddress(root->left->lexeme);
+                if ( l_mem == -1 ) {
+                    // not found
+                    l_mem = setaddress(root->left->lexeme);
+                }
+                r0 = alloc_reg();
+                mov_rm(r0, l_mem);
+                r1 = genCode(root->right);
+                if ( strcmp(root->lexeme, "+=") == 0 ) {
+                    printf("ADD r%d r%d\n", r0, r1);
+                } else {
+                    printf("SUB r%d r%d\n", r0, r1);
+                }
+                mov_mr(l_mem, r0);
+                free_reg(r1);
+                free_reg(r0);
+                break;
+            case INCDEC:
+                l_mem = getaddress(root->right->lexeme);
+                retaddr = alloc_reg();
+                mov_rm(retaddr, l_mem);
+                r0 = alloc_reg();
+                mov_rc(r0, 1);
+                printf("ADD r%d r%d\n", retaddr, r0);
+                free_reg(r0);
+                mov_mr(l_mem, retaddr);
+                break;
+            case ADDSUB:
+            case MULDIV:
+
+                r0 = genCode(root->left);
+                r1 = genCode(root->right);
+
+                if (strcmp(root->lexeme, "+") == 0) {
+                    op = "ADD";
+                } else if (strcmp(root->lexeme, "-") == 0) {
+                    op = "SUB";
+                } else if (strcmp(root->lexeme, "*") == 0) {
+                    op = "MUL";
+                } else if (strcmp(root->lexeme, "/") == 0) {
+                    op = "DIV";
+                }
+
+                printf("%s r%d r%d\n", op, r0, r1);
+                retaddr = r0;
+                free_reg(r1);
+                break;
+            case AND:
+            case OR:
+            case XOR:
+                r0 = genCode(root->left);
+                r1 = genCode(root->right);
+
+                if (strcmp(root->lexeme, "&") == 0) {
+                    op = "AND";
+                } else if (strcmp(root->lexeme, "|") == 0) {
+                    op = "OR";
+                } else if (strcmp(root->lexeme, "^") == 0) {
+                    op = "XOR";
+                }
+
+                printf("%s r%d r%d\n", op, r0, r1);
+                retaddr = r0;
+                free_reg(r1);
+                break;
+            default:
+                retaddr = 0;
+        }
+    }
+    return retaddr;
+}
+
+
+
+
+
+
+
+
+
 
 int evaluateTree(BTNode *root) {
     int retval = 0, lv = 0, rv = 0;
@@ -394,6 +744,7 @@ int evaluateTree(BTNode *root) {
     if (root != NULL) {
         switch (root->data) {
             case ID:
+                has_ID = 1;
                 retval = getval(root->lexeme);
                 break;
             case INT:
@@ -403,9 +754,24 @@ int evaluateTree(BTNode *root) {
                 rv = evaluateTree(root->right);
                 retval = setval(root->left->lexeme, rv);
                 break;
+            case ADDSUB_ASSIGN:
+                rv = evaluateTree(root->right);
+                if ( strcmp(root->lexeme, "+=") == 0 )
+                    retval = setval(root->left->lexeme, getval(root->left->lexeme) + rv);
+                else
+                    retval = setval(root->left->lexeme, getval(root->left->lexeme) - rv);
+                break;
+            case INCDEC:
+                // printf("var = %s, val = %d\n", root->right->lexeme, getval(root->right->lexeme));
+                if ( strcmp(root->lexeme, "++") == 0 )
+                    retval = setval(root->right->lexeme, getval(root->right->lexeme)+1);
+                else
+                    retval = setval(root->right->lexeme, getval(root->right->lexeme)-1);
+                break;
             case ADDSUB:
             case MULDIV:
                 lv = evaluateTree(root->left);
+                has_ID = 0;
                 rv = evaluateTree(root->right);
                 if (strcmp(root->lexeme, "+") == 0) {
                     retval = lv + rv;
@@ -414,9 +780,38 @@ int evaluateTree(BTNode *root) {
                 } else if (strcmp(root->lexeme, "*") == 0) {
                     retval = lv * rv;
                 } else if (strcmp(root->lexeme, "/") == 0) {
-                    if (rv == 0)
-                        error(DIVZERO);
+                    /*
+                    
+2. At least one variable in the right-hand side:
+
+                x = 0
+                y = 5 / x
+
+This is a valid expression.
+                    
+                    */
+                    if (rv == 0) {
+                        if ( has_ID ) {
+                            retval = -1;
+                        } else {
+                            error(DIVZERO);
+                        }
+                    }
+                    has_ID = 0;
                     retval = lv / rv;
+                }
+                break;
+            case AND:
+            case OR:
+            case XOR:
+                lv = evaluateTree(root->left);
+                rv = evaluateTree(root->right);
+                if (strcmp(root->lexeme, "&") == 0) {
+                    retval = lv & rv;
+                } else if (strcmp(root->lexeme, "|") == 0) {
+                    retval = lv | rv;
+                } else if (strcmp(root->lexeme, "^") == 0) {
+                    retval = lv ^ rv;
                 }
                 break;
             default:
@@ -433,6 +828,7 @@ void printPrefix(BTNode *root) {
         printPrefix(root->right);
     }
 }
+
 
 
 /*============================================================================================
@@ -463,10 +859,16 @@ main
 //		   	      ADDSUB LPAREN expr RPAREN
 
 int main() {
+    if (!DEBUG)
+        // freopen("input.txt", "w", stdout);
+        ;
     initTable();
-    printf(">> ");
-    while (1) {
-        statement();
+    // printf(">> ");
+    while (statement() != 1) {
+        ;
     }
+    // store x, y, z to reg 0, 1, 2
+    printf("MOV r0 [0]\nMOV r1 [4]\nMOV r2 [8]\n");
+    printf("EXIT 0");
     return 0;
 }
