@@ -19,7 +19,7 @@
 |---------|----------|
 | Grammar     | 100%       |
 | Undefined Variable     | 100%       |
-| Div by 0 handling     | 0%       |
+| Div by 0 handling     | 100%       |
 
 ## Code Generation
 |         | Progress |
