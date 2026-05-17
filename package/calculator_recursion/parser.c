@@ -9,11 +9,11 @@ Symbol table[TBLSIZE];
 
 void initTable(void) {
     strcpy(table[0].name, "x");
-    table[0].val = 0;
-    strcpy(table[4].name, "y");
-    table[4].val = 0;
-    strcpy(table[8].name, "z");
-    table[8].val = 0;
+    table[0].address = 0;
+    strcpy(table[1].name, "y");
+    table[1].address = 4;
+    strcpy(table[2].name, "z");
+    table[2].address = 8;
     sbcount = 3;
 }
 
@@ -22,7 +22,7 @@ int getval(char *str) {
 
     for (i = 0; i < sbcount; i++)
         if (strcmp(str, table[i].name) == 0)
-            return table[i].reg_address;
+            return table[i].val;
 
     if (sbcount >= TBLSIZE)
         error(RUNOUT);
@@ -30,22 +30,25 @@ int getval(char *str) {
     // Undefined variable
     error(NOTFOUND);
     return 0;
-    /*
-    strcpy(table[sbcount].name, str);
-    table[sbcount].val = 0;
-    sbcount++;
-    return 0;
-    */ 
 }
 
+int getaddress(char* str) {
+    int i = 0;
+    for (i = 0; i < sbcount; i++) {
+        if (strcmp(str, table[i].name) == 0) {
+            return table[i].address;
+        }
+    }
+    // error(NOTFOUND);
+    return -1;
+}
 
-int setaddress(char *str, int address) {
+int setaddress(char *str) {
     int i = 0;
 
     for (i = 0; i < sbcount; i++) {
         if (strcmp(str, table[i].name) == 0) {
-            table[i].reg_address = address;
-            return address;
+            return table[i].address;
         }
     }
 
@@ -53,9 +56,8 @@ int setaddress(char *str, int address) {
         error(RUNOUT);
     
     strcpy(table[sbcount].name, str);
-    table[sbcount].reg_address = address;
-    sbcount++;
-    return address;
+    table[sbcount].address = (sbcount) * 4;
+    return table[sbcount++].address;
 }
 
 int setval(char *str, int val) {
@@ -273,19 +275,25 @@ BTNode *factor(void) {
 
 
 // statement := ENDFILE | END | expr END
-void statement(void) {
+int statement(void) {
+    // puts("in");
     BTNode *retp = NULL;
 
     if (match(ENDFILE)) {
-        exit(0);
+        return 1;
     } else if (match(END)) {
-        printf(">> ");
+        // printf(">> ");
         advance();
     } else {
         retp = assign_expr();
         if (match(END)) {
-            evaluateTree(retp);
-            // printf("%d\n", evaluateTree(retp));
+            // Check syntax
+            if (DEBUG)
+                printf("%d\n", evaluateTree(retp));
+            
+            // printf(" === Assembly code ===\n");
+            genCode(retp);
+            // printf(" === Assembly code ===\n");
             // printf("Prefix traversal: ");
             // printPrefix(retp);
             // printf("\n");

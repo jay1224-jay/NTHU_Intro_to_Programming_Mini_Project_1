@@ -1,4 +1,4 @@
-# Assembly Parser
+ # Assembly Parser
 
 - Evaluates the result of your assembly code
 - Calculates the total clock cycle

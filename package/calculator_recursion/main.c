@@ -50,10 +50,15 @@ or_expr
 */
 
 int main() {
+    if (!DEBUG)
+        freopen("input.txt", "w", stdout);
     initTable();
-    printf(">> ");
-    while (1) {
-        statement();
+    // printf(">> ");
+    while (statement() != 1) {
+        ;
     }
+    // store x, y, z to reg 0, 1, 2
+    printf("MOV r0 [0]\nMOV r1 [4]\nMOV r2 [8]\n");
+    printf("EXIT 0");
     return 0;
 }

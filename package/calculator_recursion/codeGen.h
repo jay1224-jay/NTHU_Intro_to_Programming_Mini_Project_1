@@ -7,7 +7,7 @@
 extern int evaluateTree(BTNode *root);
 
 // Generate Assembly code
-extern void generateCode(BTNode* root);
+extern int genCode(BTNode* root);
 
 // Print the syntax tree in prefix
 extern void printPrefix(BTNode *root);
