@@ -18,7 +18,7 @@
 |         | Progress |
 |---------|----------|
 | Grammar     | 100%       |
-| Undefined Variable     | 0%       |
+| Undefined Variable     | 100%       |
 | Div by 0 handling     | 0%       |
 
 ## Code Generation

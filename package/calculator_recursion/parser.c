@@ -27,10 +27,15 @@ int getval(char *str) {
     if (sbcount >= TBLSIZE)
         error(RUNOUT);
     
+    // Undefined variable
+    error(NOTFOUND);
+    return 0;
+    /*
     strcpy(table[sbcount].name, str);
     table[sbcount].val = 0;
     sbcount++;
     return 0;
+    */ 
 }
 
 int setval(char *str, int val) {
