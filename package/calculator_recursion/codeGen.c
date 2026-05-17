@@ -18,6 +18,13 @@ int evaluateTree(BTNode *root) {
                 rv = evaluateTree(root->right);
                 retval = setval(root->left->lexeme, rv);
                 break;
+            case ADDSUB_ASSIGN:
+                rv = evaluateTree(root->right);
+                if ( strcmp(root->lexeme, "+=") == 0 )
+                    retval = setval(root->left->lexeme, getval(root->left->lexeme) + rv);
+                else
+                    retval = setval(root->left->lexeme, getval(root->left->lexeme) - rv);
+                break;
             case INCDEC:
                 // printf("var = %s, val = %d\n", root->right->lexeme, getval(root->right->lexeme));
                 if ( strcmp(root->lexeme, "++") == 0 )

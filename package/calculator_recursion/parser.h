@@ -18,7 +18,8 @@
 
 // Error types
 typedef enum {
-    UNDEFINED, MISPAREN, NOTNUMID, NOTFOUND, RUNOUT, NOTLVAL, DIVZERO, SYNTAXERR
+    UNDEFINED, MISPAREN, NOTNUMID, NOTFOUND, RUNOUT, NOTLVAL, 
+    DIVZERO, SYNTAXERR, NOTASSIGN
 } ErrorType;
 
 // Structure of the symbol table
@@ -31,6 +32,7 @@ typedef struct {
 typedef struct _Node {
     TokenSet data;
     int val;
+    int is_lvalue;
     char lexeme[MAXLEN];
     struct _Node *left; 
     struct _Node *right;

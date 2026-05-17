@@ -85,14 +85,8 @@ BTNode *factor(void) {
     } else if (match(ID)) {
         left = makeNode(ID, getLexeme());
         advance();
-        if (!match(ASSIGN)) {
-            retp = left;
-        } else {
-            retp = makeNode(ASSIGN, getLexeme());
-            advance();
-            retp->left = left;
-            retp->right = expr();
-        }
+        left->is_lvalue = 1;
+        retp = left;
     } else if (match(ADDSUB)) {
         retp = makeNode(ADDSUB, getLexeme());
         retp->left = makeNode(INT, "0");
@@ -127,6 +121,7 @@ BTNode *factor(void) {
     else if (match(LPAREN)) {
         advance();
         retp = expr();
+        retp->is_lvalue = 0;
         if (match(RPAREN))
             advance();
         else
@@ -181,17 +176,31 @@ BTNode *expr_tail(BTNode *left) {
 
 // assign_expr = ID ASSIGN assign_expr | ID ADDSUB_ASSIGN assign_expr | or_expr
 BTNode *assign_expr(void) {
-    BTNode *retp = NULL, *left = NULL;
-    if ( match(ID) ) {
-        left = makeNode(ID, getLexeme());
-        advance();
-        if ( match(ASSIGN) ) {
-            ;
-        } else if ( match(ADDSUB_ASSIGN) ) {
-            ;
+    BTNode *left = expr(), *retp;
+
+    
+    if ( match(ASSIGN) ) {
+        if (!left->is_lvalue) {
+            error(NOTLVAL);
         }
+        retp = makeNode(ASSIGN, getLexeme());
+        advance();
+        retp->left = left; // ID
+        retp->right = assign_expr(); // assign_expr
+    } else if ( match(ADDSUB_ASSIGN) ) {
+        if(!left->is_lvalue) {
+            error(NOTLVAL);
+        }
+        retp = makeNode(ADDSUB_ASSIGN, getLexeme());
+        advance();
+        retp->left = left; // ID
+        retp->right = assign_expr(); // assign_expr
+    } else {
+        retp = left;
     }
 
+    return retp;
+    
 }
 
 
@@ -244,6 +253,9 @@ void err(ErrorType errorNum) {
                 break;
             case SYNTAXERR:
                 fprintf(stderr, "syntax error\n");
+                break;
+            case NOTASSIGN:
+                fprintf(stderr, " \"=\" expected\n");
                 break;
             default:
                 fprintf(stderr, "undefined error\n");
