@@ -26,6 +26,7 @@ typedef enum {
 typedef struct {
     int val;
     char name[MAXLEN];
+    int reg_address;
 } Symbol;
 
 // Structure of a tree node
@@ -49,6 +50,7 @@ extern int getval(char *str);
 
 // Set the value of a variable
 extern int setval(char *str, int val);
+extern int setaddress(char* str, int address);
 
 // Make a new node according to token type and lexeme
 extern BTNode *makeNode(TokenSet tok, const char *lexe);

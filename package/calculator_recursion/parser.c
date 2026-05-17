@@ -10,10 +10,10 @@ Symbol table[TBLSIZE];
 void initTable(void) {
     strcpy(table[0].name, "x");
     table[0].val = 0;
-    strcpy(table[1].name, "y");
-    table[1].val = 0;
-    strcpy(table[2].name, "z");
-    table[2].val = 0;
+    strcpy(table[4].name, "y");
+    table[4].val = 0;
+    strcpy(table[8].name, "z");
+    table[8].val = 0;
     sbcount = 3;
 }
 
@@ -22,7 +22,7 @@ int getval(char *str) {
 
     for (i = 0; i < sbcount; i++)
         if (strcmp(str, table[i].name) == 0)
-            return table[i].val;
+            return table[i].reg_address;
 
     if (sbcount >= TBLSIZE)
         error(RUNOUT);
@@ -36,6 +36,26 @@ int getval(char *str) {
     sbcount++;
     return 0;
     */ 
+}
+
+
+int setaddress(char *str, int address) {
+    int i = 0;
+
+    for (i = 0; i < sbcount; i++) {
+        if (strcmp(str, table[i].name) == 0) {
+            table[i].reg_address = address;
+            return address;
+        }
+    }
+
+    if (sbcount >= TBLSIZE)
+        error(RUNOUT);
+    
+    strcpy(table[sbcount].name, str);
+    table[sbcount].reg_address = address;
+    sbcount++;
+    return address;
 }
 
 int setval(char *str, int val) {
@@ -264,12 +284,13 @@ void statement(void) {
     } else {
         retp = assign_expr();
         if (match(END)) {
-            printf("%d\n", evaluateTree(retp));
-            printf("Prefix traversal: ");
-            printPrefix(retp);
-            printf("\n");
+            evaluateTree(retp);
+            // printf("%d\n", evaluateTree(retp));
+            // printf("Prefix traversal: ");
+            // printPrefix(retp);
+            // printf("\n");
             freeTree(retp);
-            printf(">> ");
+            // printf(">> ");
             advance();
         } else {
             error(SYNTAXERR);

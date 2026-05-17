@@ -5,6 +5,67 @@
 
 int has_ID;
 
+#define REG_NUMBER
+
+int reg_used[REG_NUMBER]; // 8 register
+int mem_idx = 0;
+int variable_reg[256]; // address of variable in regiser
+
+int alloc_reg(void) {
+    for ( int i = 0 ; i < REG_NUMBER ; ++i ) {
+        if ( !reg_used[i] ) {
+            reg_used[i] = 1;
+            return i;
+        }
+    }
+    puts("\n\n\nRunning out of registers\n\n\n");
+    return -1;
+}
+
+void free_reg(int r) {
+    reg_used[r] = 0;
+}
+
+
+
+void generateCode(BTNode *root) {
+    int retval = 0, lv = 0, rv = 0;
+
+    if (root != NULL) {
+        switch (root->data) {
+            case ID:
+                break;
+            case INT:
+                break;
+            case ASSIGN:
+                break;
+            case ADDSUB_ASSIGN:
+                break;
+            case INCDEC:
+                break;
+            case ADDSUB:
+            case MULDIV:
+                break;
+            case AND:
+            case OR:
+            case XOR:
+                break;
+            default:
+                retval = 0;
+        }
+    }
+    return retval;
+}
+
+
+
+
+
+
+
+
+
+
 int evaluateTree(BTNode *root) {
     int retval = 0, lv = 0, rv = 0;
 
