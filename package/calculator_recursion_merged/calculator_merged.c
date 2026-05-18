@@ -537,6 +537,7 @@ int statement(void) {
             error(SYNTAXERR);
         }
     }
+    return 0;
 }
 
 void err(ErrorType errorNum) {
@@ -601,6 +602,13 @@ int alloc_reg(void) {
     return -1;
 }
 
+void reset_reg(void) {
+    for ( int i = 0 ; i < REG_NUMBER ; ++i ) {
+        reg_used[i] = 0;
+    }
+
+}
+
 void free_reg(int r) {
     reg_used[r] = 0;
 }
@@ -660,7 +668,8 @@ int genCode(BTNode *root) {
                 }
                 r1 = genCode(root->right);
                 mov_mr(l_mem, r1);
-                free_reg(r1);
+                retaddr = r1; // should return the result addr
+                // free_reg(r1);
                 break;
             case ADDSUB_ASSIGN:
                 l_mem = getaddress(root->left->lexeme);
@@ -678,7 +687,8 @@ int genCode(BTNode *root) {
                 }
                 mov_mr(l_mem, r0);
                 free_reg(r1);
-                free_reg(r0);
+                retaddr = r1;
+                // free_reg(r0);
                 break;
             case INCDEC:
                 l_mem = getaddress(root->right->lexeme);
@@ -857,10 +867,10 @@ int main() {
     initTable();
     // printf(">> ");
     while (statement() != 1) {
-        ;
+        reset_reg();
     }
     // store x, y, z to reg 0, 1, 2
     printf("MOV r0 [0]\nMOV r1 [4]\nMOV r2 [8]\n");
-    printf("EXIT 0");
+    printf("EXIT 0\n");
     return 0;
 }

@@ -5,8 +5,8 @@
 |         | Progress |
 |---------|----------|
 | lex     | 100%       |
-| parser  | 0%       |
-| codeGen | 0%       |
+| parser  | 100%       |
+| codeGen | 90%       |
 
 ## Lex
 |         | Progress |
@@ -24,9 +24,9 @@
 ## Code Generation
 |         | Progress |
 |---------|----------|
-| Assembly code     | 0%       |
-| Store final value in register| 0%|
-| Optimization | 0% | 
+| Assembly code     | 90%       |
+| Store final value in register| 100%|
+| Optimization | 10% | 
 
 1. [Mini_Project_1_Spec.pptx](Mini_Project_1_Spec.pptx) is the specification of Mini Project 1.
 
