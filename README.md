@@ -8,25 +8,20 @@
 | parser  | 100%       |
 | codeGen | 90%       |
 
-## Lex
-|         | Progress |
-|---------|----------|
-| New grammar     | 100%       |
-| long var name  | 100%       |
-
-## Parser
-|         | Progress |
-|---------|----------|
-| Grammar     | 100%       |
-| Undefined Variable     | 100%       |
-| Div by 0 handling     | 100%       |
 
 ## Code Generation
 |         | Progress |
 |---------|----------|
 | Assembly code     | 100%       |
 | Store final value in register| 100%|
-| Optimization | 10% | 
+| Optimization | 0% | 
+
+## Optimization
+1. Register value caching
+2. self operation
+
+
+## Spec
 
 1. [Mini_Project_1_Spec.pptx](Mini_Project_1_Spec.pptx) is the specification of Mini Project 1.
 

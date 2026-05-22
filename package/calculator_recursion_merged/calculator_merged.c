@@ -516,6 +516,11 @@ int genCode(BTNode *root) {
 
     switch (root->data) {
         case ID:
+
+            /*
+            TODO: Register Value Caching
+            */
+
             retaddr = alloc_reg();
             if (getaddress(root->lexeme) == -1)
                 error(NOTFOUND);
