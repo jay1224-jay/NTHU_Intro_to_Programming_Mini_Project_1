@@ -350,7 +350,7 @@ int main(int argc, char **argv) {
     /// comment here to read input from standard input or file
     /// comment here to read input from standard input or file
     /// comment here to read input from standard input or file
-    // freopen("input.txt","r",stdin);
+    freopen("input.txt","r",stdin);
     freopen("output.txt", "w", stdout);
 
     INST *inst;
