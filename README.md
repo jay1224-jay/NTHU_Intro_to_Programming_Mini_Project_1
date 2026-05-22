@@ -24,7 +24,7 @@
 ## Code Generation
 |         | Progress |
 |---------|----------|
-| Assembly code     | 90%       |
+| Assembly code     | 100%       |
 | Store final value in register| 100%|
 | Optimization | 10% | 
 
