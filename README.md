@@ -14,11 +14,12 @@
 |---------|----------|
 | Assembly code     | 100%       |
 | Store final value in register| 100%|
-| Optimization | 0% | 
+| Optimization | 80% | 
 
 ## Optimization
-1. Register value caching
-2. self operation
+1. xyz register stay
+2. Pre-evaluation for no ID expression
+
 
 
 ## Spec

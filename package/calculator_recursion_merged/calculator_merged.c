@@ -629,7 +629,7 @@ int hasID(BTNode* root) {
 
 int genCode(BTNode *root) {
     int retval = 0;
-    int r0, r1, r_result, lh, rh;
+    int r0, r1, r_result, lh, rh, l_ID, r_ID;
     if (root != NULL) {
         switch (root->data) {
             case ID:
@@ -679,6 +679,13 @@ int genCode(BTNode *root) {
             case XOR:
                 lh = get_height(root->left);
                 rh = get_height(root->right);
+
+                if ( !hasID(root) ) {
+                    r0 = alloc_reg();
+                    retval = r0;
+                    printf("MOV r%d %d\n", r0, evaluateTree(root));
+                    return r0;
+                }
 
                 if ( lh > rh ) {
                     r0 = genCode(root->left);
